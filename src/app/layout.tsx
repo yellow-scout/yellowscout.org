@@ -16,9 +16,30 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ['400', '500'],
 });
 
+const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : 'http://localhost:3000';
+
 export const metadata: Metadata = {
-  title: 'ytest.USD Faucet',
-  description: 'ERC20 test token faucet for Ethereum Sepolia with anti-abuse protections.',
+  metadataBase: new URL(baseUrl),
+  title: 'YELLOW Faucet',
+  description: 'YELLOW test token faucet for Ethereum Sepolia with on-chain cooldown and anti-abuse protections.',
+  icons: {
+    icon: '/logo-light.png',
+    apple: '/logo-light.png',
+  },
+  openGraph: {
+    title: 'YELLOW Faucet — Sepolia Testnet',
+    description: 'Request 1,000 YELLOW test tokens on Sepolia. On-chain cooldown, Turnstile CAPTCHA, and rate limiting.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'YELLOW Faucet' }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'YELLOW Faucet — Sepolia Testnet',
+    description: 'Request 1,000 YELLOW test tokens on Sepolia.',
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

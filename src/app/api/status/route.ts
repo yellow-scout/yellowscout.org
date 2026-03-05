@@ -1,26 +1,33 @@
 import { NextResponse } from 'next/server';
+import { formatUnits } from 'viem';
 import {
   FaucetConfigurationError,
   getFaucetAddress,
-  getTokenBalance,
+  getFaucetContractBalance,
+  getOnChainCooldown,
+  getOnChainDripAmount,
 } from '@/lib/blockchain';
 import {
   CHAIN,
-  COOLDOWN_SECONDS,
   DRIP_AMOUNT,
+  FAUCET_CONTRACT_ADDRESS,
   TOKEN_ADDRESS,
   TOKEN_DECIMALS,
   TOKEN_SYMBOL,
 } from '@/lib/constants';
 import { isRedisConfigured } from '@/lib/ratelimit';
-import { formatUnits } from 'viem';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
     const faucetAddress = getFaucetAddress();
-    const tokenBalanceRaw = await getTokenBalance(faucetAddress);
+
+    const [contractBalanceRaw, onChainDripAmount, onChainCooldown] = await Promise.all([
+      getFaucetContractBalance(),
+      getOnChainDripAmount(),
+      getOnChainCooldown(),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -28,13 +35,15 @@ export async function GET() {
       chainId: CHAIN.id,
       chainName: CHAIN.name,
       faucetAddress,
+      faucetContractAddress: FAUCET_CONTRACT_ADDRESS,
       tokenAddress: TOKEN_ADDRESS,
       tokenSymbol: TOKEN_SYMBOL,
       tokenDecimals: TOKEN_DECIMALS,
-      faucetBalance: formatUnits(tokenBalanceRaw, TOKEN_DECIMALS),
-      faucetBalanceRaw: tokenBalanceRaw.toString(),
+      faucetBalance: formatUnits(contractBalanceRaw, TOKEN_DECIMALS),
+      faucetBalanceRaw: contractBalanceRaw.toString(),
       dripAmount: DRIP_AMOUNT,
-      cooldownSeconds: COOLDOWN_SECONDS,
+      onChainDripAmount: formatUnits(onChainDripAmount, TOKEN_DECIMALS),
+      cooldownSeconds: Number(onChainCooldown),
       checks: {
         redisConfigured: isRedisConfigured(),
         turnstileConfigured: Boolean(
@@ -57,10 +66,11 @@ export async function GET() {
         message,
         chainId: CHAIN.id,
         chainName: CHAIN.name,
+        faucetContractAddress: FAUCET_CONTRACT_ADDRESS,
         tokenAddress: TOKEN_ADDRESS,
         tokenSymbol: TOKEN_SYMBOL,
         dripAmount: DRIP_AMOUNT,
-        cooldownSeconds: COOLDOWN_SECONDS,
+        cooldownSeconds: 86_400,
         checks: {
           redisConfigured: isRedisConfigured(),
           turnstileConfigured: Boolean(

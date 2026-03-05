@@ -1,5 +1,7 @@
 import {
   type Address,
+  BaseError,
+  ContractFunctionRevertedError,
   createPublicClient,
   createWalletClient,
   formatUnits,
@@ -10,7 +12,8 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   CHAIN,
-  DRIP_AMOUNT_BASE_UNITS,
+  FAUCET_ABI,
+  FAUCET_CONTRACT_ADDRESS,
   TOKEN_ABI,
   TOKEN_ADDRESS,
   TOKEN_DECIMALS,
@@ -21,6 +24,11 @@ const rpcUrl = process.env.SEPOLIA_RPC_URL || 'https://sepolia.drpc.org';
 
 export class FaucetConfigurationError extends Error {}
 export class FaucetDryError extends Error {}
+export class FaucetCooldownError extends Error {
+  constructor(public readonly remainingSeconds: number) {
+    super(`Cooldown active: ${remainingSeconds}s remaining`);
+  }
+}
 export class FaucetRecipientError extends Error {}
 
 let txQueue = Promise.resolve();
@@ -103,35 +111,101 @@ export async function getFormattedTokenBalance(address: Address): Promise<string
   return formatUnits(balance, TOKEN_DECIMALS);
 }
 
+export async function getFaucetContractBalance(): Promise<bigint> {
+  return getTokenBalance(FAUCET_CONTRACT_ADDRESS);
+}
+
+export async function getFormattedFaucetContractBalance(): Promise<string> {
+  const balance = await getFaucetContractBalance();
+  return formatUnits(balance, TOKEN_DECIMALS);
+}
+
+export async function getOnChainDripAmount(): Promise<bigint> {
+  const { publicClient } = getClients();
+  return publicClient.readContract({
+    address: FAUCET_CONTRACT_ADDRESS,
+    abi: FAUCET_ABI,
+    functionName: 'dripAmount',
+  });
+}
+
+export async function getOnChainCooldown(): Promise<bigint> {
+  const { publicClient } = getClients();
+  return publicClient.readContract({
+    address: FAUCET_CONTRACT_ADDRESS,
+    abi: FAUCET_ABI,
+    functionName: 'cooldown',
+  });
+}
+
+export async function getOnChainCooldownRemaining(recipient: Address): Promise<number> {
+  const { publicClient } = getClients();
+
+  const [lastDripTimestamp, cooldownPeriod] = await Promise.all([
+    publicClient.readContract({
+      address: FAUCET_CONTRACT_ADDRESS,
+      abi: FAUCET_ABI,
+      functionName: 'lastDrip',
+      args: [recipient],
+    }),
+    getOnChainCooldown(),
+  ]);
+
+  if (lastDripTimestamp === 0n) {
+    return 0;
+  }
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const unlockAt = lastDripTimestamp + cooldownPeriod;
+
+  if (now >= unlockAt) {
+    return 0;
+  }
+
+  return Number(unlockAt - now);
+}
+
 export async function sendDripTransaction(to: Address): Promise<{ txHash: `0x${string}` }> {
   return withTxMutex(async () => {
     const { account, publicClient, walletClient } = getClients();
-
-    const faucetTokenBalance = await getTokenBalance(account.address);
-    if (faucetTokenBalance < DRIP_AMOUNT_BASE_UNITS) {
-      throw new FaucetDryError('Faucet token balance is insufficient');
-    }
 
     const nonce = await publicClient.getTransactionCount({
       address: account.address,
       blockTag: 'pending',
     });
 
-    const txHash = await walletClient.writeContract({
-      account,
-      chain: CHAIN,
-      address: TOKEN_ADDRESS,
-      abi: TOKEN_ABI,
-      functionName: 'transfer',
-      args: [to, DRIP_AMOUNT_BASE_UNITS],
-      nonce,
-    });
+    try {
+      const txHash = await walletClient.writeContract({
+        account,
+        chain: CHAIN,
+        address: FAUCET_CONTRACT_ADDRESS,
+        abi: FAUCET_ABI,
+        functionName: 'dripTo',
+        args: [to],
+        nonce,
+      });
 
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-    if (receipt.status !== 'success') {
-      throw new Error('Token transfer transaction reverted');
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') {
+        throw new Error('Faucet dripTo transaction reverted');
+      }
+
+      return { txHash };
+    } catch (error) {
+      if (error instanceof BaseError) {
+        const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
+        if (revert instanceof ContractFunctionRevertedError) {
+          const reason = revert.data?.errorName ?? revert.message;
+          if (reason.includes('cooldown')) {
+            const remaining = await getOnChainCooldownRemaining(to);
+            throw new FaucetCooldownError(remaining || 3600);
+          }
+          if (reason.includes('insufficient balance')) {
+            throw new FaucetDryError('Faucet contract token balance is insufficient');
+          }
+        }
+      }
+      throw error;
     }
-
-    return { txHash };
   });
 }

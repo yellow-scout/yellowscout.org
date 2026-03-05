@@ -204,7 +204,7 @@ export function FaucetForm({ onRequestComplete }: FaucetFormProps) {
       <CardHeader className="space-y-2">
         <CardTitle>Request Test Tokens</CardTitle>
         <CardDescription>
-          Fixed drip amount: {DRIP_AMOUNT} {TOKEN_SYMBOL} on Sepolia. One request every 4 hours per wallet.
+          Drip: {DRIP_AMOUNT} {TOKEN_SYMBOL} on Sepolia. One request every 24 hours per wallet.
         </CardDescription>
       </CardHeader>
       <CardContent>

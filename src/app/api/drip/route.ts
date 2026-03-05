@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAddress } from 'viem';
 import {
   FaucetConfigurationError,
+  FaucetCooldownError,
   FaucetDryError,
   FaucetRecipientError,
+  getOnChainCooldownRemaining,
   isContractAddress,
   normalizeAddress,
   sendDripTransaction,
@@ -114,6 +116,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const onChainCooldown = await getOnChainCooldownRemaining(recipientAddress);
+    if (onChainCooldown > 0) {
+      return json(429, {
+        success: false,
+        message: 'This wallet is on cooldown (on-chain).',
+        reason: 'address_cooldown',
+        retryAfter: onChainCooldown,
+      });
+    }
+
     const globalLimit = await checkGlobalLimit();
     if (!globalLimit.success) {
       return json(429, {
@@ -150,10 +162,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (error instanceof FaucetCooldownError) {
+      return json(429, {
+        success: false,
+        message: 'This wallet is on cooldown (on-chain).',
+        reason: 'address_cooldown',
+        retryAfter: error.remainingSeconds,
+      });
+    }
+
     if (error instanceof FaucetDryError) {
       return json(503, {
         success: false,
-        message: 'Faucet wallet is currently dry. Please try again later.',
+        message: 'Faucet contract is currently dry. Please try again later.',
       });
     }
 

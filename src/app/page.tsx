@@ -1,19 +1,30 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AddToWallet } from '@/components/AddToWallet';
 import { FaucetForm } from '@/components/FaucetForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ETHERSCAN_TOKEN_URL, TOKEN_ADDRESS, TOKEN_SYMBOL } from '@/lib/constants';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import {
+  ETHERSCAN_CONTRACT_URL,
+  ETHERSCAN_TOKEN_URL,
+  FAUCET_CONTRACT_ADDRESS,
+  TOKEN_ADDRESS,
+  TOKEN_SYMBOL,
+} from '@/lib/constants';
 
 type StatusResponse = {
   success: boolean;
   health: 'ok' | 'degraded';
   message?: string;
   faucetAddress?: string;
+  faucetContractAddress?: string;
   faucetBalance?: string;
   tokenAddress: string;
+  onChainDripAmount?: string;
+  cooldownSeconds?: number;
   checks: {
     redisConfigured: boolean;
     turnstileConfigured: boolean;
@@ -68,8 +79,16 @@ export default function HomePage() {
 
     return numericBalance.toLocaleString(undefined, {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
+      maximumFractionDigits: 0,
     });
+  }, [status]);
+
+  const cooldownLabel = useMemo(() => {
+    if (!status?.cooldownSeconds) return '24h';
+    const hours = Math.floor(status.cooldownSeconds / 3600);
+    const minutes = Math.floor((status.cooldownSeconds % 3600) / 60);
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
   }, [status]);
 
   return (
@@ -81,52 +100,100 @@ export default function HomePage() {
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <Card className="animate-fade-in-up border-primary/25">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
-            <div className="space-y-3">
-              <Badge variant="outline" className="w-fit">
-                Sepolia ERC20 Faucet
-              </Badge>
-              <CardTitle className="text-3xl tracking-tight sm:text-4xl">{TOKEN_SYMBOL} Faucet</CardTitle>
+          <CardHeader className="space-y-4 pb-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-3">
+                <Image
+                  src="/logo-light.png"
+                  alt="Yellow"
+                  width={160}
+                  height={48}
+                  className="h-10 w-auto dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/logo-dark.png"
+                  alt="Yellow"
+                  width={160}
+                  height={48}
+                  className="hidden h-10 w-auto dark:block"
+                  priority
+                />
+                <Badge variant="outline" className="w-fit">
+                  Sepolia Testnet
+                </Badge>
+              </div>
+              <ThemeToggle />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{TOKEN_SYMBOL} Faucet</h1>
               <p className="max-w-xl text-sm text-muted-foreground">
-                Request test tokens with layered abuse protection: Turnstile, per-IP throttling,
-                device fingerprint checks, wallet cooldowns, and global rate controls.
+                Request {TOKEN_SYMBOL} test tokens on Sepolia. Protected by Turnstile CAPTCHA,
+                per-IP throttling, device fingerprinting, and on-chain cooldown ({cooldownLabel}).
               </p>
             </div>
-            <ThemeToggle />
           </CardHeader>
           <CardContent className="space-y-5">
             <FaucetForm onRequestComplete={fetchStatus} />
           </CardContent>
-          <CardFooter className="flex flex-col items-start gap-2 border-t border-border/60 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="font-medium">
-                Faucet balance:{' '}
-                <span className="font-mono">
-                  {statusLoading ? 'Loading...' : `${balanceLabel} ${TOKEN_SYMBOL}`}
-                </span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Token:{' '}
-                <a
-                  href={ETHERSCAN_TOKEN_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline decoration-dotted underline-offset-4"
-                >
-                  {status?.tokenAddress ?? TOKEN_ADDRESS}
-                </a>
-              </p>
+          <CardFooter className="flex flex-col items-start gap-3 border-t border-border/60 pt-4 text-sm">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">
+                  Contract balance:{' '}
+                  <span className="font-mono">
+                    {statusLoading ? 'Loading...' : `${balanceLabel} ${TOKEN_SYMBOL}`}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Drip:{' '}
+                  <span className="font-mono">
+                    {status?.onChainDripAmount
+                      ? `${Number(status.onChainDripAmount).toLocaleString()} ${TOKEN_SYMBOL}`
+                      : `1,000 ${TOKEN_SYMBOL}`}
+                  </span>
+                  {' / '}
+                  {cooldownLabel} cooldown
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={status?.health === 'ok' ? 'success' : 'danger'}>
+                  {status?.health === 'ok' ? 'Healthy' : 'Degraded'}
+                </Badge>
+                <Badge variant={status?.checks?.redisConfigured ? 'secondary' : 'warning'}>
+                  Redis {status?.checks?.redisConfigured ? 'ok' : 'off'}
+                </Badge>
+                <Badge variant={status?.checks?.turnstileConfigured ? 'secondary' : 'warning'}>
+                  Turnstile {status?.checks?.turnstileConfigured ? 'ok' : 'off'}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={status?.health === 'ok' ? 'success' : 'danger'}>
-                {status?.health === 'ok' ? 'Healthy' : 'Degraded'}
-              </Badge>
-              <Badge variant={status?.checks?.redisConfigured ? 'secondary' : 'warning'}>
-                Redis {status?.checks?.redisConfigured ? 'ok' : 'off'}
-              </Badge>
-              <Badge variant={status?.checks?.turnstileConfigured ? 'secondary' : 'warning'}>
-                Turnstile {status?.checks?.turnstileConfigured ? 'ok' : 'off'}
-              </Badge>
+            <div className="flex w-full flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>
+                  Token:{' '}
+                  <a
+                    href={ETHERSCAN_TOKEN_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline decoration-dotted underline-offset-4"
+                  >
+                    {TOKEN_ADDRESS.slice(0, 6)}...{TOKEN_ADDRESS.slice(-4)}
+                  </a>
+                </p>
+                <p>
+                  Faucet:{' '}
+                  <a
+                    href={ETHERSCAN_CONTRACT_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline decoration-dotted underline-offset-4"
+                  >
+                    {FAUCET_CONTRACT_ADDRESS.slice(0, 6)}...{FAUCET_CONTRACT_ADDRESS.slice(-4)}
+                  </a>
+                </p>
+              </div>
+              <AddToWallet />
             </div>
           </CardFooter>
         </Card>
