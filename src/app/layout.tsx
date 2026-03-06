@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Mono, Space_Grotesk } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { Navbar } from '@/components/Navbar';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -22,22 +23,25 @@ const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
-  title: 'YELLOW Faucet',
-  description: 'YELLOW test token faucet for Ethereum Sepolia with on-chain cooldown and anti-abuse protections.',
+  title: {
+    default: 'YellowScout — Yellow Community Portal',
+    template: '%s | YellowScout',
+  },
+  description: 'Community-led portal for the Yellow protocol. Faucet, TVL, Governance, Leaderboard.',
   icons: {
     icon: '/favicon.ico',
     apple: '/favicon.ico',
   },
   openGraph: {
-    title: 'YELLOW Faucet — Sepolia Testnet',
-    description: 'Request 1,000 YELLOW test tokens on Sepolia. On-chain cooldown, Turnstile CAPTCHA, and rate limiting.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'YELLOW Faucet' }],
+    title: 'YellowScout — Your Gateway to the Yellow Ecosystem',
+    description: 'Community-led portal for the Yellow protocol. Faucet, TVL, Governance, Leaderboard.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'YellowScout' }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'YELLOW Faucet — Sepolia Testnet',
-    description: 'Request 1,000 YELLOW test tokens on Sepolia.',
+    title: 'YellowScout — Yellow Community Portal',
+    description: 'Community-led portal for the Yellow protocol. Faucet, TVL, Governance, Leaderboard.',
     images: ['/og-image.png'],
   },
 };
@@ -45,7 +49,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} antialiased`}>{children}</body>
+      <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} antialiased`}>
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }

@@ -4,7 +4,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 're
 import { isAddress } from 'viem';
 import { TransactionStatus, type FaucetUiStatus } from '@/components/TransactionStatus';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { DRIP_AMOUNT, TOKEN_SYMBOL } from '@/lib/constants';
 import { generateDeviceFingerprint } from '@/lib/fingerprint';
@@ -200,59 +199,56 @@ export function FaucetForm({ onRequestComplete }: FaucetFormProps) {
     isSubmitting || !siteKey || !turnstileToken || !addressTrimmed || Boolean(addressHasError);
 
   return (
-    <Card className="border-primary/25 shadow-glow animate-fade-in-up">
-      <CardHeader className="space-y-2">
-        <CardTitle>Request Test Tokens</CardTitle>
-        <CardDescription>
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">Request Test Tokens</h2>
+        <p className="text-sm text-muted-foreground">
           Drip: {DRIP_AMOUNT} {TOKEN_SYMBOL} on Sepolia. One request every 24 hours per wallet.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label htmlFor="address" className="text-sm font-medium">
-              Wallet Address
-            </label>
-            <Input
-              id="address"
-              type="text"
-              placeholder="0x..."
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {addressHasError && <p className="text-xs text-red-400">Address format looks invalid.</p>}
-          </div>
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Human Verification</p>
-            {siteKey ? (
-              <div
-                ref={turnstileContainerRef}
-                className="min-h-[66px] rounded-md border border-input/70 bg-background/60 p-2"
-              />
-            ) : (
-              <p className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-                Missing <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code>.
-              </p>
-            )}
-          </div>
-
-          <Button type="submit" className="w-full" size="lg" disabled={submitDisabled}>
-            {isSubmitting ? 'Submitting request...' : `Request ${DRIP_AMOUNT} ${TOKEN_SYMBOL}`}
-          </Button>
-        </form>
-
-        <div className="mt-4">
-          <TransactionStatus
-            status={status}
-            onCooldownExpire={() => {
-              setStatus({ kind: 'idle' });
-            }}
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="space-y-2">
+          <label htmlFor="address" className="text-sm font-medium">
+            Wallet Address
+          </label>
+          <Input
+            id="address"
+            type="text"
+            placeholder="0x..."
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
           />
+          {addressHasError && <p className="text-xs text-red-400">Address format looks invalid.</p>}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Human Verification</p>
+          {siteKey ? (
+            <div
+              ref={turnstileContainerRef}
+              className="min-h-[66px] rounded-md border border-input/70 bg-background/60 p-2"
+            />
+          ) : (
+            <p className="rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Missing <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code>.
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" className="w-full" size="lg" disabled={submitDisabled}>
+          {isSubmitting ? 'Submitting request...' : `Request ${DRIP_AMOUNT} ${TOKEN_SYMBOL}`}
+        </Button>
+      </form>
+
+      <TransactionStatus
+        status={status}
+        onCooldownExpire={() => {
+          setStatus({ kind: 'idle' });
+        }}
+      />
+    </div>
   );
 }
