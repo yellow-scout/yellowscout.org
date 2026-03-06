@@ -80,7 +80,7 @@ export function Navbar() {
 
           <div className="hidden items-center gap-2 sm:flex">
             <a
-              href="https://github.com/yellowscout"
+              href="https://github.com/yellow-scout"
               target="_blank"
               rel="noreferrer"
               className="rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground"
@@ -128,7 +128,7 @@ export function Navbar() {
               ))}
               <div className="flex items-center gap-2 border-t border-border/40 pt-2">
                 <a
-                  href="https://github.com/yellowscout"
+                  href="https://github.com/yellow-scout"
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-md p-2 text-muted-foreground"

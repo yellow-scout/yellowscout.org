@@ -111,13 +111,17 @@ export async function getAddressCooldown(address: string): Promise<number> {
   return ttl;
 }
 
-export async function setAddressCooldown(address: string, txHash: string): Promise<void> {
+export async function setAddressCooldown(
+  address: string,
+  txHash: string,
+  cooldownSeconds?: number,
+): Promise<void> {
   if (!redis) {
     return;
   }
 
   await redis.set(cooldownKey(address), txHash, {
-    ex: COOLDOWN_SECONDS,
+    ex: cooldownSeconds ?? COOLDOWN_SECONDS,
   });
 }
 

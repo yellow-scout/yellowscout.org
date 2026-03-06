@@ -73,7 +73,7 @@ export function HeroSection() {
           </Link>
 
           <a
-            href="https://github.com/yellowscout"
+            href="https://github.com/yellow-scout"
             target="_blank"
             rel="noreferrer"
           >

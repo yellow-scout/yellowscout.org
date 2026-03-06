@@ -7,7 +7,7 @@ import {
 } from '@/lib/constants';
 
 const LINKS = [
-  { label: 'GitHub', href: 'https://github.com/yellowscout' },
+  { label: 'GitHub', href: 'https://github.com/yellow-scout' },
   { label: 'Yellow.com', href: 'https://yellow.com' },
   { label: 'Token', href: ETHERSCAN_TOKEN_URL },
   { label: 'Faucet Contract', href: ETHERSCAN_CONTRACT_URL },

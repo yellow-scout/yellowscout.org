@@ -5,6 +5,7 @@ import {
   FaucetCooldownError,
   FaucetDryError,
   FaucetRecipientError,
+  getOnChainCooldown,
   getOnChainCooldownRemaining,
   isContractAddress,
   normalizeAddress,
@@ -136,10 +137,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { txHash } = await sendDripTransaction(recipientAddress);
+    const [{ txHash }, onChainCooldownPeriod] = await Promise.all([
+      sendDripTransaction(recipientAddress),
+      getOnChainCooldown(),
+    ]);
 
     await Promise.all([
-      setAddressCooldown(recipientAddress, txHash),
+      setAddressCooldown(recipientAddress, txHash, Number(onChainCooldownPeriod)),
       logDripAttempt({
         ip,
         address: recipientAddress,
